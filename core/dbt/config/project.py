@@ -26,15 +26,12 @@ from dbt.version import get_installed_version
 from dbt.utils import MultiDict
 from dbt.node_types import NodeType
 from dbt.config.selectors import SelectorDict
-
 from dbt.contracts.project import (
     Project as ProjectContract,
     SemverString,
 )
 from dbt.contracts.project import PackageConfig
-
 from dbt.dataclass_schema import ValidationError
-
 from .renderer import DbtProjectYamlRenderer
 from .selectors import (
     selector_config_from_data,
@@ -307,7 +304,8 @@ class PartialProject(RenderComponents):
 
         try:
             cfg = ProjectContract.from_dict(
-                rendered.project_dict, validate=True
+                rendered.project_dict,
+                validate=True
             )
         except ValidationError as e:
             raise DbtProjectError(validator_error_message(e)) from e

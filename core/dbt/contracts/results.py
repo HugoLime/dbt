@@ -17,8 +17,8 @@ from dbt.logger import (
     GLOBAL_LOGGER as logger,
 )
 from dbt.utils import lowercase
-from dbt.dataclass_schema.helpers import StrEnum
-from dbt.dataclass_schema import JsonSchemaMixin
+from dbt.dataclass_schema import dbtClassMixin, StrEnum
+from mashumaro.types import SerializableType
 
 import agate
 
@@ -30,7 +30,7 @@ from dbt.clients.system import write_json
 
 
 @dataclass
-class TimingInfo(JsonSchemaMixin):
+class TimingInfo(dbtClassMixin):
     name: str
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
@@ -87,13 +87,20 @@ class FreshnessStatus(StrEnum):
 
 
 @dataclass
-class BaseResult(JsonSchemaMixin):
+class BaseResult(dbtClassMixin):
     status: Union[RunStatus, TestStatus, FreshnessStatus]
     timing: List[TimingInfo]
     thread_id: str
     execution_time: float
-    message: Optional[Union[str, int]]
     adapter_response: Dict[str, Any]
+    message: Optional[Union[str, int]]
+
+    @classmethod
+    def before_from_dict(cls, data):
+        data = super().before_from_dict(data)
+        if 'message' not in data:
+            data['message'] = None
+        return data
 
 
 @dataclass
@@ -101,9 +108,15 @@ class NodeResult(BaseResult):
     node: CompileResultNode
 
 
+# Use a class to prevent mashumaro from serializing agate_table
+class SerializableAgateTable(agate.Table, SerializableType):
+   def _serialize(self) -> None:
+       return None
+
+
 @dataclass
 class RunResult(NodeResult):
-    agate_table: Optional[agate.Table] = None
+    agate_table: Optional[SerializableAgateTable] = None
 
     @property
     def skipped(self):
@@ -111,7 +124,7 @@ class RunResult(NodeResult):
 
 
 @dataclass
-class ExecutionResult(JsonSchemaMixin):
+class ExecutionResult(dbtClassMixin):
     results: Sequence[BaseResult]
     elapsed_time: float
 
@@ -253,14 +266,14 @@ class FreshnessErrorEnum(StrEnum):
 
 
 @dataclass
-class SourceFreshnessRuntimeError(JsonSchemaMixin):
+class SourceFreshnessRuntimeError(dbtClassMixin):
     unique_id: str
     error: Optional[Union[str, int]]
     status: FreshnessErrorEnum
 
 
 @dataclass
-class SourceFreshnessOutput(JsonSchemaMixin):
+class SourceFreshnessOutput(dbtClassMixin):
     unique_id: str
     max_loaded_at: datetime
     snapshotted_at: datetime
@@ -374,40 +387,40 @@ CatalogKey = NamedTuple(
 
 
 @dataclass
-class StatsItem(JsonSchemaMixin):
+class StatsItem(dbtClassMixin):
     id: str
     label: str
     value: Primitive
-    description: Optional[str]
     include: bool
+    description: Optional[str] = None
 
 
 StatsDict = Dict[str, StatsItem]
 
 
 @dataclass
-class ColumnMetadata(JsonSchemaMixin):
+class ColumnMetadata(dbtClassMixin):
     type: str
-    comment: Optional[str]
     index: int
     name: str
+    comment: Optional[str] = None
 
 
 ColumnMap = Dict[str, ColumnMetadata]
 
 
 @dataclass
-class TableMetadata(JsonSchemaMixin):
+class TableMetadata(dbtClassMixin):
     type: str
-    database: Optional[str]
     schema: str
     name: str
-    comment: Optional[str]
-    owner: Optional[str]
+    database: Optional[str] = None
+    comment: Optional[str] = None
+    owner: Optional[str] = None
 
 
 @dataclass
-class CatalogTable(JsonSchemaMixin, Replaceable):
+class CatalogTable(dbtClassMixin, Replaceable):
     metadata: TableMetadata
     columns: ColumnMap
     stats: StatsDict
@@ -430,10 +443,10 @@ class CatalogMetadata(BaseArtifactMetadata):
 
 
 @dataclass
-class CatalogResults(JsonSchemaMixin):
+class CatalogResults(dbtClassMixin):
     nodes: Dict[str, CatalogTable]
     sources: Dict[str, CatalogTable]
-    errors: Optional[List[str]]
+    errors: Optional[List[str]] = None
     _compile_results: Optional[Any] = None
 
 
