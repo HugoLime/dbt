@@ -42,7 +42,7 @@ setup(
     url="https://github.com/fishtown-analytics/dbt",
     packages=[],
     install_requires=[
-        'dbt-core=={}'.format(package_version),
+        'dbt-core @ git+https://github.com/HugoLime/dbt.git@fix-werkzeug-versions#subdirectory=core',
         'dbt-postgres=={}'.format(package_version),
         'dbt-redshift=={}'.format(package_version),
         'dbt-snowflake=={}'.format(package_version),
